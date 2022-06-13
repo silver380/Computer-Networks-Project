@@ -18,4 +18,4 @@ while True:
     Response = ClientSocket.recv(1024)
     print(Response.decode('utf-8'))
 
-ClientSocket.close()
+ClientheSocket.close()
