@@ -1,5 +1,4 @@
 import socket
-import os
 import subprocess
 import sqlite3
 from _thread import *
@@ -14,11 +13,10 @@ try:
 except socket.error as e:
     print(str(e))
 
-print("Enter the number of Clients:")
-client_number = int(input())
+# Creating Clients
+client_number = int(input("Enter the number of Clients:"))
 print('Waiting for a Connection..')
 ServerSocket.listen(client_number)
-
 for i in range(client_number):
     subprocess.call(["gnome-terminal", "-x", "sh", "-c", "python3 ./Client.py"])
 
