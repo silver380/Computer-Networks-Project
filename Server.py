@@ -1,14 +1,13 @@
 import os.path
 import socket
 import subprocess
-import sqlite3
 import tqdm
 from _thread import *
 
 ServerSocket = socket.socket()
 host = '127.0.0.1'
-port = 1233
-BUFFER_SIZE = 10000
+port = 5000
+BUFFER_SIZE = 1000
 ThreadCount = 0
 
 while True:
@@ -29,36 +28,33 @@ for i in range(client_number):
 
 def threaded_client(connection):
     try:
-        client_name = connection.recv(BUFFER_SIZE).decode()
+        client_name = connection.recv(1000).decode()
         print(client_name)
-        getting_file = True
-        while getting_file:
+        data = connection.recv(BUFFER_SIZE).decode()
+        file_size = int(data)
+        print("size is", file_size)
+        file_name = f"./{client_name}.csv"
+        progress = tqdm.tqdm(range(file_size), f"Saving in {file_name}",mininterval=0.00000001, maxinterval=0.00000001, unit="B", unit_scale=True,
+                             unit_divisor=2048, colour='blue')
+        total_rcv = 0
+        with open(file_name, "wb") as f:
+            while True:
+                bytes_read = connection.recv(BUFFER_SIZE)
+                total_rcv += len(bytes_read)
+                progress.update(len(bytes_read))
+                f.write(bytes_read)
+                if total_rcv >= file_size:
+                    break
+        connection.sendall(str.encode("saved successfully"))
+        while True:
             data = connection.recv(BUFFER_SIZE).decode()
             if not data:
                 break
-            file_size = int(data)
-            print("size is", file_size)
-            file_name = os.path.basename(f"./{client_name}.csv")
-            progress = tqdm.tqdm(range(file_size), f"Saving in {file_name}", unit="B", unit_scale=True,
-                                 unit_divisor=2048)
-            total_rcv = 0
-            with open(file_name, "wb") as f:
-                while True:
-                    bytes_read = connection.recv(BUFFER_SIZE)
-                    total_rcv += len(bytes_read)
-                    f.write(bytes_read)
-                    progress.update(len(bytes_read))
-                    if total_rcv >= file_size:
-                        # nothing is received
-                        # file transmitting is done
-                        getting_file = False
-                        break
-                    # write to the file the bytes we just received
-            print("ok")
-            connection.sendall(str.encode("saved successfully"))
+
     except socket.error as er:
         print(str(er))
-    connection.close()
+
+    # connection.close()
 
 
 while True:
