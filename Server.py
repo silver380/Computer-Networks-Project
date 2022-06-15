@@ -7,9 +7,8 @@ from _thread import *
 
 ServerSocket = socket.socket()
 host = '127.0.0.1'
-port = 1223
-BUFFER_SIZE = 4096
-SEPARATOR = "<SEPARATOR>"
+port = 1233
+BUFFER_SIZE = 10000
 ThreadCount = 0
 
 while True:
@@ -30,7 +29,6 @@ for i in range(client_number):
 
 def threaded_client(connection):
     try:
-        connection.send(str.encode('Welcome to the Server'))
         client_name = connection.recv(BUFFER_SIZE).decode()
         print(client_name)
         getting_file = True
@@ -42,22 +40,22 @@ def threaded_client(connection):
             print("size is", file_size)
             file_name = os.path.basename(f"./{client_name}.csv")
             progress = tqdm.tqdm(range(file_size), f"Saving in {file_name}", unit="B", unit_scale=True,
-                                 unit_divisor=1024)
+                                 unit_divisor=2048)
             total_rcv = 0
             with open(file_name, "wb") as f:
                 while True:
-                    # read 1024 bytes from the socket (receive)
                     bytes_read = connection.recv(BUFFER_SIZE)
                     total_rcv += len(bytes_read)
                     f.write(bytes_read)
                     progress.update(len(bytes_read))
-                    if total_rcv == file_size:
+                    if total_rcv >= file_size:
                         # nothing is received
                         # file transmitting is done
                         getting_file = False
                         break
                     # write to the file the bytes we just received
-            connection.send(str.encode("saved successfully"))
+            print("ok")
+            connection.sendall(str.encode("saved successfully"))
     except socket.error as er:
         print(str(er))
     connection.close()
@@ -69,4 +67,5 @@ while True:
     start_new_thread(threaded_client, (Client,))
     ThreadCount += 1
     print('Thread Number: ' + str(ThreadCount))
+
 ServerSocket.close()
