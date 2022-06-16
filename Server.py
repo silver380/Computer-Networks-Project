@@ -3,11 +3,12 @@ import socket
 import subprocess
 import tqdm
 import pandas as pd
+import pickle
 from _thread import *
 
 ServerSocket = socket.socket()
 host = '127.0.0.1'
-port = 5000
+port = 4000
 BUFFER_SIZE = 1000
 ThreadCount = 0
 
@@ -77,6 +78,16 @@ def threaded_client(connection):
                 except os.error as er:
                     print(str(er))
                     continue
+            elif command == 'Max':
+                data = client_df.sort_values(by= 'Average',
+                                             ascending=False)[['First_name', 'Last_Name', 'Average']].iloc[0]
+                data = pickle.dumps(list(data))
+                connection.send(data)
+            elif command == 'Min':
+                data = client_df.sort_values(by= 'Average',
+                                             ascending=True)[['First_name', 'Last_Name', 'Average']].iloc[0]
+                data = pickle.dumps(list(data))
+                connection.send(data)
 
 
 

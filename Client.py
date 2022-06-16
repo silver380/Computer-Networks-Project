@@ -2,10 +2,11 @@ import socket
 import tqdm
 import os
 import sys
+import pickle
 
 ClientSocket = socket.socket()
 host = '127.0.0.1'
-port = 5000
+port = 4000
 BUFFER_SIZE = 10000
 
 
@@ -44,7 +45,7 @@ def send_command():
         os.system('clear')
         if command == "help":
             print("you can use these commands to interact with the server:\n")
-            print("[*]Done: will close the connection\n")
+            print("[*]Done: close the connection\n")
             print("[*]Average: See the average point of your faculty\n")
             print("[*]Sort: See the list of your Students, sorted by their average\n")
             print("[*]Max: See the first name and the last name of the student with the highest average\n")
@@ -75,6 +76,20 @@ def send_command():
                         break
             print(f"you can see the result in {sorted_file_name}")
             input("press Enter to go back to main menu")
+        elif command == 'Max':
+            ClientSocket.send(command.encode())
+            data = ClientSocket.recv(BUFFER_SIZE)
+            data = pickle.loads(data)
+            print(f"{data[0]} {data[1]} with average {data[2]} has the highest average in your faculty")
+            input("press Enter to go back to main menu")
+        elif command == 'Min':
+            ClientSocket.send(command.encode())
+            data = ClientSocket.recv(BUFFER_SIZE)
+            data = pickle.loads(data)
+            print(f"{data[0]} {data[1]} with average {data[2]} has the lowest average in your faculty")
+            input("press Enter to go back to main menu")
+        elif command == "insert":
+            pass
 
 
 
