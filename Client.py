@@ -3,6 +3,7 @@ import tqdm
 import os
 import sys
 import pickle
+import pandas as pd
 
 ClientSocket = socket.socket()
 host = '127.0.0.1'
@@ -46,7 +47,7 @@ def send_command():
         if command == "help":
             print("you can use these commands to interact with the server:\n")
             print("[*]Done: close the connection\n")
-            print("[*]Average: See the average point of your faculty\n")
+            print("[*]Average: See the average point of your Students\n")
             print("[*]Sort: See the list of your Students, sorted by their average\n")
             print("[*]Max: See the first name and the last name of the student with the highest average\n")
             print("[*]Min: See the first name and the last name of the student with the lowest average\n")
@@ -54,9 +55,27 @@ def send_command():
             input("Press enter to go back")
         if command == 'Average':
             ClientSocket.send(command.encode())
-            data = ClientSocket.recv(100)
-            print(f"{client_name} Students Average is: ", data.decode())
+            data = ClientSocket.recv(BUFFER_SIZE).decode()
+            averaged_file_size = int(data)
+            averaged_file_name = f"./Client_CSVs/Averged_{client_name}.csv"
+            progress = tqdm.tqdm(range(averaged_file_size), f"Saving in {averaged_file_name}", mininterval=0.00000001,
+                                 maxinterval=0.00000001,
+                                 unit="B", unit_scale=True, unit_divisor=2048, colour='red')
+            total_rcv = 0
+            with open(averaged_file_name, "wb") as f:
+                while True:
+                    bytes_read = ClientSocket.recv(BUFFER_SIZE)
+                    total_rcv += len(bytes_read)
+                    progress.update(len(bytes_read))
+                    f.write(bytes_read)
+                    if total_rcv >= averaged_file_size:
+                        break
+            average_df = pd.read_csv(averaged_file_name)
+            print(average_df)
+            print(f"you can see the result in {averaged_file_name}")
             input("press Enter to go back to main menu")
+            os.system('clear')
+            continue
         elif command == 'Sort':
             ClientSocket.send(command.encode())
             data = ClientSocket.recv(BUFFER_SIZE).decode()
@@ -74,33 +93,62 @@ def send_command():
                     f.write(bytes_read)
                     if total_rcv >= sorted_file_size:
                         break
+            sorted_df = pd.read_csv(sorted_file_name)
+            print(sorted_df)
             print(f"you can see the result in {sorted_file_name}")
             input("press Enter to go back to main menu")
+            os.system('clear')
+            continue
         elif command == 'Max':
             ClientSocket.send(command.encode())
             data = ClientSocket.recv(BUFFER_SIZE)
             data = pickle.loads(data)
             print(f"{data[0]} {data[1]} with average {data[2]} has the highest average in your faculty")
             input("press Enter to go back to main menu")
+            os.system('clear')
+            continue
         elif command == 'Min':
             ClientSocket.send(command.encode())
             data = ClientSocket.recv(BUFFER_SIZE)
             data = pickle.loads(data)
             print(f"{data[0]} {data[1]} with average {data[2]} has the lowest average in your faculty")
             input("press Enter to go back to main menu")
-        elif command == "insert":
-            pass
+            os.system('clear')
+            continue
+        elif command == 'Insert':
+            new_data = []
+            id = input("enter the student ID:\n")
+            new_data.append(id)
+            second_id = input("enter the student Second_ID:\n")
+            new_data.append(second_id)
+            first_name = input("enter the student First Name:\n")
+            new_data.append(first_name)
+            last_name = input("enter the student Last Name:\n")
+            new_data.append(last_name)
+            computer_networks = input("enter a mark for Computer Networks:\n")
+            new_data.append(computer_networks)
+            signals_and_systems = float(input("enter a mark for Signals and Systems:\n"))
+            new_data.append(signals_and_systems)
+            databases = float(input("enter a mark for Databases:\n"))
+            new_data.append(databases)
+            calculus = float(input("enter a mark for Calculus:\n"))
+            new_data.append(calculus)
+            ops = float(input("enter a mark for Operating_Systems:\n"))
+            new_data.append(ops)
+            ClientSocket.send(command.encode())
+            new_data = pickle.dumps(new_data)
+            ClientSocket.send(new_data)
+            massage = ClientSocket.recv(BUFFER_SIZE).decode()
+            print(massage)
+            input("press Enter to go back to main menu")
+            os.system('clear')
+            continue
 
+        elif command == 'Done':
+            ClientSocket.send(command.encode())
+            ClientSocket.close()
+            sys.exit()
 
-
-
-# while True:
-#     Input = input('Say Something: ')
-#     ClientSocket.send(str.encode(Input))
-#     Response = ClientSocket.recv(1024)
-#     print(Response.decode('utf-8'))
-#
-# ClientheSocket.close()
 
 if __name__ == '__main__':
     print("Welcome")

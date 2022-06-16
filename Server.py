@@ -9,11 +9,16 @@ from _thread import *
 ServerSocket = socket.socket()
 host = '127.0.0.1'
 port = 4000
-BUFFER_SIZE = 1000
+BUFFER_SIZE = 10000
 ThreadCount = 0
 
 
-# Creating Clients
+def my_avg(data):
+    avg = 0.0
+    for i in range(4, len(data)):
+        avg = avg + float(data[i])
+    return avg//5
+
 
 def creating_clients():
     client_number = int(input("Enter the number of Clients:"))
@@ -51,16 +56,40 @@ def threaded_client(connection):
         while True:
             command = connection.recv(BUFFER_SIZE).decode()
             if command == 'Average':
-                average = client_df['Average'].mean()
-                connection.send(str(average).encode())
+                average_df = client_df.copy()[['ID', 'Average']]
+                average_df.to_csv(path_or_buf=f"./Server_CSVs/Averaged_{client_name}.csv", index=False)
+                try:
+                    averaged_file_name = f"./Server_CSVs/Averaged_{client_name}.csv"
+                    averaged_file_size = os.path.getsize(averaged_file_name)
+                    connection.send(f"{averaged_file_size}".encode())
+                    progress = tqdm.tqdm(range(averaged_file_size), f"Sending {averaged_file_name}",
+                                         mininterval=0.000000001,
+                                         maxinterval=0.000000001,
+                                         unit="B", unit_scale=True, unit_divisor=2048, colour='red', delay=0)
+                    total_send = 0
+                    with open(averaged_file_name, "rb") as f:
+                        while True:
+                            # read the bytes from the file
+                            bytes_read = f.read(BUFFER_SIZE)
+                            total_send += len(bytes_read)
+                            progress.update(len(bytes_read))
+                            connection.sendall(bytes_read)
+                            if total_send >= averaged_file_size:
+                                # file transmitting is done
+                                break
+                    os.remove(averaged_file_name)
+                except os.error as er:
+                    print(str(er))
+                    continue
             elif command == 'Sort':
                 sorted_df = client_df.copy().sort_values(by='Average', ascending=False)[['Second_ID', 'Average']]
-                sorted_df.to_csv(path_or_buf=f"./Server_CSVs/Sorted_{client_name}.csv",index=False)
+                sorted_df.to_csv(path_or_buf=f"./Server_CSVs/Sorted_{client_name}.csv", index=False)
                 try:
                     sorted_file_name = f"./Server_CSVs/Sorted_{client_name}.csv"
                     sorted_file_size = os.path.getsize(sorted_file_name)
                     connection.send(f"{sorted_file_size}".encode())
-                    progress = tqdm.tqdm(range(sorted_file_size), f"Sending {sorted_file_name}", mininterval=0.000000001,
+                    progress = tqdm.tqdm(range(sorted_file_size), f"Sending {sorted_file_name}",
+                                         mininterval=0.000000001,
                                          maxinterval=0.000000001,
                                          unit="B", unit_scale=True, unit_divisor=2048, colour='green', delay=0)
                     total_send = 0
@@ -79,22 +108,28 @@ def threaded_client(connection):
                     print(str(er))
                     continue
             elif command == 'Max':
-                data = client_df.sort_values(by= 'Average',
+                data = client_df.sort_values(by='Average',
                                              ascending=False)[['First_name', 'Last_Name', 'Average']].iloc[0]
                 data = pickle.dumps(list(data))
                 connection.send(data)
             elif command == 'Min':
-                data = client_df.sort_values(by= 'Average',
+                data = client_df.sort_values(by='Average',
                                              ascending=True)[['First_name', 'Last_Name', 'Average']].iloc[0]
                 data = pickle.dumps(list(data))
                 connection.send(data)
-
-
+            elif command == 'Insert':
+                new_data = connection.recv(BUFFER_SIZE)
+                new_data = pickle.loads(new_data)
+                new_data.append(my_avg(new_data))
+                client_df.loc[len(client_df)] = new_data
+                client_df.to_csv(path_or_buf=f"./Server_CSVs/{client_name}.csv",
+                                 columns=list(client_df.columns).remove('Average'), index=False)
+                connection.send("New Student Saved Successfully!".encode())
+            elif command == 'Done':
+                connection.close()
 
     except socket.error as er:
         print(str(er))
-
-    # connection.close()
 
 
 if __name__ == '__main__':
@@ -112,4 +147,6 @@ if __name__ == '__main__':
         start_new_thread(threaded_client, (Client,))
         ThreadCount += 1
         print('Thread Number: ' + str(ThreadCount))
+
     ServerSocket.close()
+
